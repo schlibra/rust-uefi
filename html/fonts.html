@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCH OS font make page</title>
+    <style>
+        .item{
+            width: 16px;
+            height: 16px;
+            border: 1px solid #ccc;
+            float: left;
+        }
+        .item.active{
+            background-color: black;
+        }
+        .row{
+            clear: left;
+        }
+        #output{
+            clear: left !important;
+            display: block;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="main"></div>
+    <textarea id="output" readonly></textarea>
+    <button onclick="Export()">Export</button>
+    <button onclick="Reset()">Reset</button>
+    <script src="js/jquery-3.7.1.min.js"></script>
+    <script>
+        for (let i = 0; i < 16; ++i) {
+            let div = document.createElement("div");
+            div.classList.add("row");
+            for (let j = 0; j < 16; ++j) {
+                let item = document.createElement("div");
+                item.classList.add("item");
+                item.id = `item-${i}-${j}`;
+                item.onclick=_=>{
+                    $(item).toggleClass("active");
+                }
+                div.appendChild(item);
+            }
+            $("#main").append(div);
+        }
+        $("#output").click(_=>{
+            if(_.target.val()){
+                _.target.select();
+                document.execCommand("copy");
+            }
+            
+        });
+        function Reset(){
+            $(".item.active").toggleClass("active");
+        }
+        function Export(){
+            let arr = [];
+            for (let i = 0; i < 16; ++i) {
+                let t = [];
+                for (let j = 0; j < 16; ++j) {
+                    t[j] = $(`#item-${i}-${j}`).hasClass("active") ? 1 : 0
+                }
+                arr[i] = t;
+            }
+            console.log(arr)
+            $("#output").val(JSON.stringify(arr));
+        }
+    </script>
+</body>
+</html>
