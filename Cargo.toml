@@ -1,5 +1,5 @@
 [package]
-name = "uefi-application"
+name = "rust-uefi"
 version = "0.1.0"
 edition = "2021"
 
