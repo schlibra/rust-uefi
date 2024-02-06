@@ -121,14 +121,14 @@ fn draw_font(buffer: &mut Buffer, font: [[u8; 16]; 16], m_x: usize, m_y: usize, 
 }
 
 #[allow(dead_code)]
-fn draw_word(buffer: &mut Buffer, word: &str, p_x: usize, p_y: usize, color: (u8, u8, u8)) -> Result {
+fn draw_word(buffer: &mut Buffer, word: &str, p_x: usize, p_y: usize, color: (u8, u8, u8), size: usize) -> Result {
     let mut count = 0;
     for item in word.chars() {
         let font = SCH::fonts_char(String::from(item).as_str());
-        for x in 0..16 {
-            for y in 0..16 {
-                if font[y][x] == 1 {
-                    let pixel = buffer.pixel(p_x+16*count+x, p_y+y).unwrap();
+        for x in 0..16*size {
+            for y in 0..16*size {
+                if font[y/size][x/size] == 1 {
+                    let pixel = buffer.pixel(p_x+16*count*size+x, p_y+y).unwrap();
                     pixel.red = color.0;
                     pixel.green = color.1;
                     pixel.blue = color.2;
@@ -215,7 +215,7 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
             second_str = String::from("0") + &second_str;
         }
         let time_str =  hour_str + ":" + &minute_str + ":" + &second_str;
-        draw_word(&mut buffer, &time_str.as_str(), width/2-64, 8, (255, 255, 255)).unwrap();
+        draw_word(&mut buffer, &time_str.as_str(), width/2-64, 8, (255, 255, 255), 1).unwrap();
         // let hour = time.hour()+8;
         // let hour0 = hour/10;
         // let hour1 = hour%10;
@@ -236,9 +236,11 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
         // let mut word = "Hello";
         // word=&word[0..1];
         // draw_word(&mut buffer, "Hello", 0, 0, (255, 255, 255)).unwrap();
-        draw_word(&mut buffer, "0123456789", 20, 100, (122, 122, 122)).unwrap();
-        draw_word(&mut buffer, "Hello", 20, 116, (200, 200, 200)).unwrap();
-        draw_word(&mut buffer, "你好", 20, 132, (190, 201, 23)).unwrap();
+        draw_word(&mut buffer, "0123456789", 20, 100, (122, 122, 122), 1).unwrap();
+        draw_word(&mut buffer, "Hello", 20, 116, (200, 200, 200), 1).unwrap();
+        draw_word(&mut buffer, "你好", 20, 132, (190, 201, 23), 1).unwrap();
+        draw_word(&mut buffer, "你好", 20, 148, (190, 201, 23), 2).unwrap();
+        draw_word(&mut buffer, "你好", 20, 180, (190, 201, 23), 3).unwrap();
         // for x in 0..16 {
         //     for y in 0..16 {
         //         if num[y][x] == 1 {
