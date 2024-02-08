@@ -106,7 +106,8 @@ fn my(bt: &BootServices) -> Result {
     }
 }
 
-fn draw_font(buffer: &mut Buffer, font: [[u8; 16]; 16], m_x: usize, m_y: usize, color: (u8, u8, u8)) -> Result {
+fn draw_font(buffer: &mut Buffer, char: &str, m_x: usize, m_y: usize, color: (u8, u8, u8)) -> Result {
+    let font = SCH::fonts_char(char);
     for x in 0..16 {
         for y in 0..16 {
             if font[y][x] == 1 {
@@ -120,15 +121,15 @@ fn draw_font(buffer: &mut Buffer, font: [[u8; 16]; 16], m_x: usize, m_y: usize, 
     Ok(())
 }
 
-#[allow(dead_code)]
-fn draw_word(buffer: &mut Buffer, word: &str, p_x: usize, p_y: usize, color: (u8, u8, u8), size: usize) -> Result {
+// #[allow(dead_code)]
+fn draw_word(buffer: &mut Buffer, word: &str, p_x: usize, p_y: usize, color: (u8, u8, u8), size: usize, thin: usize) -> Result {
     let mut count = 0;
     for item in word.chars() {
         let font = SCH::fonts_char(String::from(item).as_str());
         for x in 0..16*size {
             for y in 0..16*size {
                 if font[y/size][x/size] == 1 {
-                    let pixel = buffer.pixel(p_x+16*count*size+x, p_y+y).unwrap();
+                    let pixel = buffer.pixel(p_x+(16-thin)*count*size+x, p_y+y).unwrap();
                     pixel.red = color.0;
                     pixel.green = color.1;
                     pixel.blue = color.2;
@@ -137,6 +138,46 @@ fn draw_word(buffer: &mut Buffer, word: &str, p_x: usize, p_y: usize, color: (u8
         }
         count += 1;
     }
+    Ok(())
+}
+
+fn draw_rect(buffer: &mut Buffer, p_x: usize, p_y: usize, width: usize, height: usize, color: (u8, u8, u8)) -> Result {
+    for x in 0..width {
+        for y in 0..height {
+            let pixel = buffer.pixel(x+p_x, y+p_y).unwrap();
+            pixel.red=color.0;
+            pixel.green=color.1;
+            pixel.blue=color.2;
+        }
+    }
+    Ok(())
+}
+
+#[allow(dead_code)]
+fn draw_window(buffer: &mut Buffer, title: &str, p_x: usize, p_y: usize, width: usize, height: usize, background: (u8, u8, u8), border: usize, border_color: (u8, u8, u8)) -> Result {
+    draw_rect(buffer, p_x-border, p_y-border, width+border*2, height+border*2, border_color).unwrap();
+    draw_rect(buffer, p_x, p_y, width, height, background).unwrap();
+    // for x in 0..width+border*2 {
+    //     for y in 0..height+border*2 {
+    //         let pixel = buffer.pixel(x+p_x-border, y+p_y-border).unwrap();
+    //         if background.0 > 30 {pixel.red = background.0 - 25;} else {pixel.red = background.0;}
+    //         if background.1 > 30 {pixel.green = background.1 - 25;} else {pixel.green = background.1;}
+    //         if background.2 > 30 {pixel.blue = background.2 - 25;} else {pixel.blue = background.2;}
+    //     }
+    // }
+    // for x in 0..width {
+    //     for y in 0..height {
+    //         let pixel = buffer.pixel(x+p_x, y+p_y).unwrap();
+    //         pixel.red = background.0;
+    //         pixel.green = background.1;
+    //         pixel.blue = background.2;
+    //     }
+    // }
+    draw_word(buffer, title, p_x+5, p_y+5, (0, 0, 0), 1, 4).unwrap();
+    draw_rect(buffer, p_x, p_y+25, width, 2, border_color).unwrap();
+    draw_font(buffer, "min", p_x+width-68, p_y+5, (0, 0, 0)).unwrap();
+    draw_font(buffer, "max", p_x+width-42, p_y+5, (0, 0, 0)).unwrap();
+    draw_font(buffer, "close", p_x+width-20, p_y+5, (0, 0, 0)).unwrap();
     Ok(())
 }
 
@@ -152,31 +193,36 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
     // info!("{:?}",pointer.mode().has_button);
     // info!("{:?}",pointer.read_state());
     // info!("{:?}",pointer.read_state().unwrap());
+    info!("{}, {}", width, height);
     loop {
-        for x in 0..width {
-            for y in 0..height {
-                let pixel = buffer.pixel(x, y).unwrap();
-                pixel.red = 20;
-                pixel.blue = 200;
-                pixel.green = 50;
-            }
-        }
-        for x in 0..width{
-            for y in height-dock_height..height{
-                let pixel = buffer.pixel(x, y).unwrap();
-                pixel.red = 150;
-                pixel.blue = 150;
-                pixel.green = 150;
-            }
-        }
-        for x in 0..width {
-            for y in 0..32 {
-                let pixel = buffer.pixel(x, y).unwrap();
-                pixel.red = 120;
-                pixel.blue = 175;
-                pixel.green = 120;
-            }
-        }
+        draw_rect(&mut buffer, 0, 0, width, height, (20, 50, 200)).unwrap();
+        info!("{}, {}", height-dock_height, height);
+        draw_rect(&mut buffer, 0, height-dock_height, width, dock_height, (150, 150, 150)).unwrap();
+        draw_rect(&mut buffer, 0, 0, width, 32, (120, 120, 175)).unwrap();
+        // for x in 0..width {
+        //     for y in 0..height {
+        //         let pixel = buffer.pixel(x, y).unwrap();
+        //         pixel.red = 20;
+        //         pixel.blue = 200;
+        //         pixel.green = 50;
+        //     }
+        // }
+        // for x in 0..width{
+        //     for y in height-dock_height..height{
+        //         let pixel = buffer.pixel(x, y).unwrap();
+        //         pixel.red = 150;
+        //         pixel.blue = 150;
+        //         pixel.green = 150;
+        //     }
+        // }
+        // for x in 0..width {
+        //     for y in 0..32 {
+        //         let pixel = buffer.pixel(x, y).unwrap();
+        //         pixel.red = 120;
+        //         pixel.blue = 175;
+        //         pixel.green = 120;
+        //     }
+        // }
         // let pointer_mode = pointer.mode();
         // #[allow(unused_variables)]
         // let position = pointer_mode.resolution;
@@ -186,7 +232,7 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
         let p_x: usize = 50;
         let p_y: usize = 50;
         // info!("{}, {}",p_x, p_y);
-        draw_font(&mut buffer, SCH::fonts_char("cursor"), 50, 50, (255,255,255)).unwrap();
+        draw_font(&mut buffer, "cursor", 50, 50, (255,255,255)).unwrap();
         // let cursor = sch::Icons::cursor();
         // for x in 0..16 {
         //     for y in 0..16 {
@@ -215,7 +261,7 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
             second_str = String::from("0") + &second_str;
         }
         let time_str =  hour_str + ":" + &minute_str + ":" + &second_str;
-        draw_word(&mut buffer, &time_str.as_str(), width/2-64, 8, (255, 255, 255), 1).unwrap();
+        draw_word(&mut buffer, &time_str.as_str(), width/2-64, 8, (255, 255, 255), 1, 4).unwrap();
         // let hour = time.hour()+8;
         // let hour0 = hour/10;
         // let hour1 = hour%10;
@@ -236,11 +282,12 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
         // let mut word = "Hello";
         // word=&word[0..1];
         // draw_word(&mut buffer, "Hello", 0, 0, (255, 255, 255)).unwrap();
-        draw_word(&mut buffer, "0123456789", 20, 100, (122, 122, 122), 1).unwrap();
-        draw_word(&mut buffer, "Hello", 20, 116, (200, 200, 200), 1).unwrap();
-        draw_word(&mut buffer, "你好", 20, 132, (190, 201, 23), 1).unwrap();
-        draw_word(&mut buffer, "你好", 20, 148, (190, 201, 23), 2).unwrap();
-        draw_word(&mut buffer, "你好", 20, 180, (190, 201, 23), 3).unwrap();
+        draw_word(&mut buffer, "01234:56789", 20, 100, (255, 255, 255), 1, 4).unwrap();
+        draw_word(&mut buffer, "Hello", 20, 116, (200, 200, 200), 4, 8).unwrap();
+        // draw_word(&mut buffer, "你好", 20, 132, (190, 201, 23), 1).unwrap();
+        // draw_word(&mut buffer, "你好", 20, 148, (190, 201, 23), 2).unwrap();
+        // draw_word(&mut buffer, "你好", 20, 180, (190, 201, 23), 3).unwrap();
+        draw_window(&mut buffer, "Form1", 320, 180, 400, 340, (200, 200, 200), 3, (150, 150, 150)).unwrap();
         // for x in 0..16 {
         //     for y in 0..16 {
         //         if num[y][x] == 1 {
@@ -276,14 +323,15 @@ fn splash(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, system_ta
             black = !black;
             count -= 1;
         } 
-        for x in 0..width {
-            for y in 0..height {
-                let pixel = buffer.pixel(x, y).unwrap();
-                pixel.red = color;
-                pixel.green = color;
-                pixel.blue = color;
-            }
-        }
+        draw_rect(&mut buffer, 0, 0, width, height, (color, color, color)).unwrap();
+        // for x in 0..width {
+        //     for y in 0..height {
+        //         let pixel = buffer.pixel(x, y).unwrap();
+        //         pixel.red = color;
+        //         pixel.green = color;
+        //         pixel.blue = color;
+        //     }
+        // }
         buffer.blit(gop)?;
         
         if count == 0 {
