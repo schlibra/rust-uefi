@@ -26,9 +26,11 @@
 </head>
 <body>
     <div id="main"></div>
-    <textarea id="output" readonly></textarea>
+    <textarea id="output" rows="16"></textarea>
     <button onclick="Export()">Export</button>
+    <button onclick="Import()">Import</button>
     <button onclick="Reset()">Reset</button>
+    <button onclick="Copy()">Copy</button>
     <script src="js/jquery-3.7.1.min.js"></script>
     <script>
         for (let i = 0; i < 16; ++i) {
@@ -46,9 +48,8 @@
             $("#main").append(div);
         }
         $("#output").click(_=>{
-            if(_.target.val()){
-                _.target.select();
-                document.execCommand("copy");
+            if(document.getElementById("output").value){
+                document.getElementById("output").select();
             }
             
         });
@@ -66,6 +67,25 @@
             }
             console.log(arr)
             $("#output").val(JSON.stringify(arr));
+        }
+        function Copy(){
+            if(document.getElementById("output").value){
+                document.getElementById("output").select();
+                document.execCommand("copy");
+            }
+        }
+        function Import(){
+            let arr = JSON.parse($("#output").val());
+            for(let i=0;i<16;i++){
+                for(let j=0;j<16;j++){
+                    if (arr[i][j]){
+                        $(`#item-${i}-${j}`).addClass("active");
+                    } else {
+                        $(`#item-${i}-${j}`).removeClass("active");
+                    }
+
+                }
+            }
         }
     </script>
 </body>
