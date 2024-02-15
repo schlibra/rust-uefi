@@ -44,6 +44,8 @@ impl Buffer {
         })
     }
 }
+#[allow(dead_code)]
+static mut CURSER_POS:[i128; 2] = [0, 0];
 
 // struct Color {
 //     red: u8,
@@ -56,6 +58,14 @@ impl Buffer {
 //         Color::new(red, green, blue)
 //     }
 // }
+
+fn abs_i128(num: i128) -> i128{
+    if num > 0 {
+        num
+    } else {
+        -num
+    }
+}
 
 #[allow(dead_code)]
 fn my(bt: &BootServices) -> Result {
@@ -184,6 +194,9 @@ fn draw_window(buffer: &mut Buffer, title: &str, p_x: usize, p_y: usize, width: 
 
 #[allow(unused_variables)]
 fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, system_table: &SystemTable<Boot>) -> Result {
+    let pointer_handle = bt.get_handle_for_protocol::<Pointer>().unwrap();
+    let mut pointer = bt.open_protocol_exclusive::<Pointer>(pointer_handle).unwrap();
+    pointer.reset(false).unwrap();
     let (width, height) = gop.current_mode_info().resolution();
     let mut buffer = Buffer::new(width, height);
     let dock_height = 50;
@@ -230,10 +243,10 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
         // info!("{:?}", position);
         // let pointer_state: Option<pointer::PointerState> = pointer.read_state().unwrap();
         // let movement = pointer_state.unwrap().relative_movement;
-        let p_x: usize = 50;
-        let p_y: usize = 50;
+        let p_x: usize = unsafe { abs_i128(CURSER_POS[0]) } as usize;
+        let p_y: usize = unsafe { abs_i128(CURSER_POS[1]) } as usize;
         // info!("{}, {}",p_x, p_y);
-        draw_font(&mut buffer, "cursor", 50, 50, (255,255,255)).unwrap();
+        
         // let cursor = sch::Icons::cursor();
         // for x in 0..16 {
         //     for y in 0..16 {
@@ -248,8 +261,13 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
         // draw time
         let time = system_table.runtime_services().get_time().unwrap();
         // let mut num = SCH::fonts_number(3);
-        
-        let mut hour_str: String = (time.hour()+8).to_string();
+        let offset_hour = 0;
+        let mut hour: u8 = time.hour() + offset_hour;
+        if hour >= 24 {
+            hour-=24;
+        }
+        let mut hour_str: String = hour.to_string();
+
         if hour_str.len() == 1 {
             hour_str = String::from("0") + &hour_str;
         }
@@ -288,7 +306,28 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
         // draw_word(&mut buffer, "你好", 20, 132, (190, 201, 23), 1).unwrap();
         // draw_word(&mut buffer, "你好", 20, 148, (190, 201, 23), 2).unwrap();
         // draw_word(&mut buffer, "你好", 20, 180, (190, 201, 23), 3).unwrap();
-        draw_window(&mut buffer, "Form1", 320, 180, 400, 340, (200, 200, 200), 3, (150, 150, 150)).unwrap();
+        draw_window(&mut buffer, "Form1", 320, 180, 450, 340, (200, 200, 200), 3, (150, 150, 150)).unwrap();
+        let resolution = pointer.mode().resolution;
+        let resolution_str: String= resolution[0].to_string() + "," + &resolution[1].to_string() + "," + &resolution[2].to_string();
+        draw_word(&mut buffer, &resolution_str.as_str(), 330, 220, (0, 0, 0), 1, 0).unwrap();
+        let state = pointer.read_state().unwrap();
+        if state == None {
+            draw_word(&mut buffer, "no", 330, 236, (0, 0, 0), 1, 0).unwrap();
+        }else {
+            let pointer_speed = 2;
+            draw_word(&mut buffer, "yes", 330, 236, (0, 0, 0), 1, 0).unwrap();
+            let movement = state.unwrap().relative_movement;
+            let movement_str: String = movement[0].to_string() + "," + &movement[1].to_string() + "," + &movement[2].to_string();
+            unsafe{
+                CURSER_POS[0] += (movement[0] as i128) / (resolution[0] as i128) * pointer_speed;
+                CURSER_POS[1] += (movement[1] as i128) / (resolution[1] as i128) * pointer_speed;
+            }
+            draw_word(&mut buffer, &movement_str.as_str(), 330, 252, (0, 0, 0), 1, 0).unwrap();
+        }
+        draw_word(&mut buffer, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", 330, 268, (0, 0, 0), 1, 0).unwrap();
+
+
+        draw_font(&mut buffer, "cursor", p_x, p_y, (255,255,255)).unwrap();
         // for x in 0..16 {
         //     for y in 0..16 {
         //         if num[y][x] == 1 {
@@ -300,11 +339,16 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
         //     }
         // }
         buffer.blit(gop).unwrap();
+        bt.stall(1000);
     };
 }
 
 fn splash(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, system_table: &SystemTable<Boot>) -> Result {
     let (width, height) = gop.current_mode_info().resolution();
+    unsafe{
+        CURSER_POS[0] = (width as i128) / 2;
+        CURSER_POS[1] = (height as i128) / 2;
+    }
     // info!("{}x{}", width, height);
     let mut buffer = Buffer::new(width, height);
     let (min, max, mut count) = (50, 100, 1);
@@ -349,10 +393,10 @@ fn main(_image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let mut gop = bt
         .open_protocol_exclusive::<GraphicsOutput>(gop_handle)
         .unwrap();
-    let pointer_handle = bt.get_handle_for_protocol::<Pointer>().unwrap();
+    // let pointer_handle = bt.get_handle_for_protocol::<Pointer>().unwrap();
     // #[allow(unused_mut, unused_variables)]
-    let mut pointer = bt.open_protocol_exclusive::<Pointer>(pointer_handle).unwrap();
-    pointer.reset(true).unwrap();
+    // let mut pointer = bt.open_protocol_exclusive::<Pointer>(pointer_handle).unwrap();
+    // pointer.reset(true).unwrap();
     // info!("{:?}", pointer.read_state());
     // loop {
         // #[allow(unused_variables)]
