@@ -11,6 +11,7 @@ use alloc::vec::Vec;
 use log::info;
 use sch::SCH;
 use uefi::proto::console::gop::{BltOp, BltPixel, BltRegion, GraphicsOutput};
+use uefi::proto::console::pointer::Pointer;
 // use uefi::proto::console::pointer::Pointer;
 // use uefi::proto::console::text::Color;
 use uefi::table::boot::ScopedProtocol;
@@ -193,10 +194,10 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
     // info!("{:?}",pointer.mode().has_button);
     // info!("{:?}",pointer.read_state());
     // info!("{:?}",pointer.read_state().unwrap());
-    info!("{}, {}", width, height);
+    // info!("{}, {}", width, height);
     loop {
         draw_rect(&mut buffer, 0, 0, width, height, (20, 50, 200)).unwrap();
-        info!("{}, {}", height-dock_height, height);
+        // info!("{}, {}", height-dock_height, height);
         draw_rect(&mut buffer, 0, height-dock_height, width, dock_height, (150, 150, 150)).unwrap();
         draw_rect(&mut buffer, 0, 0, width, 32, (120, 120, 175)).unwrap();
         // for x in 0..width {
@@ -348,9 +349,11 @@ fn main(_image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let mut gop = bt
         .open_protocol_exclusive::<GraphicsOutput>(gop_handle)
         .unwrap();
-    // let pointer_handle = bt.get_handle_for_protocol::<Pointer>().unwrap();
+    let pointer_handle = bt.get_handle_for_protocol::<Pointer>().unwrap();
     // #[allow(unused_mut, unused_variables)]
-    // let mut pointer = bt.open_protocol_exclusive::<Pointer>(pointer_handle).unwrap();
+    let mut pointer = bt.open_protocol_exclusive::<Pointer>(pointer_handle).unwrap();
+    pointer.reset(true).unwrap();
+    // info!("{:?}", pointer.read_state());
     // loop {
         // #[allow(unused_variables)]
         // let pointer_state = pointer.read_state().unwrap().unwrap();
