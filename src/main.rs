@@ -325,6 +325,7 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
             draw_word(&mut buffer, &movement_str.as_str(), 330, 252, (0, 0, 0), 1, 0).unwrap();
         }
         draw_word(&mut buffer, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", 330, 268, (0, 0, 0), 1, 0).unwrap();
+        draw_word(&mut buffer, "abcdefghijklmnopqrstuvwxyz", 330, 284, (0, 0, 0), 1, 0).unwrap();
 
 
         draw_font(&mut buffer, "cursor", p_x, p_y, (255,255,255)).unwrap();
