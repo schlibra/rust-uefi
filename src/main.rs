@@ -132,6 +132,19 @@ fn draw_font(buffer: &mut Buffer, char: &str, m_x: usize, m_y: usize, color: (u8
     Ok(())
 }
 
+fn draw_line(buffer: &mut Buffer, pos1: (u32, u32), pos2: (u32, u32), color: (u8, u8, u8)) -> Result {
+    let k: i32 = ((pos2.1-pos1.1)/(pos2.0-pos1.0)).try_into().unwrap();
+    let b: i32 = pos1.1 as i32-k*pos1.0 as i32;
+    for x in pos1.0..pos2.0 {
+        let y = k * x as i32 + b;
+        let pixel = buffer.pixel(x as usize, y as usize).unwrap();
+        pixel.red = color.0;
+        pixel.green = color.1;
+        pixel.blue = color.2;
+    }
+    Ok(())
+}
+
 // #[allow(dead_code)]
 fn draw_word(buffer: &mut Buffer, word: &str, p_x: usize, p_y: usize, color: (u8, u8, u8), size: usize, thin: usize) -> Result {
     let mut count = 0;
@@ -326,7 +339,7 @@ fn draw_desktop(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, sys
         }
         draw_word(&mut buffer, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", 330, 268, (0, 0, 0), 1, 0).unwrap();
         draw_word(&mut buffer, "abcdefghijklmnopqrstuvwxyz", 330, 284, (0, 0, 0), 1, 0).unwrap();
-
+        draw_line(&mut buffer, (250, 350), (300, 550), (255, 255, 255)).unwrap();
 
         draw_font(&mut buffer, "cursor", p_x, p_y, (255,255,255)).unwrap();
         // for x in 0..16 {
