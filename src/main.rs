@@ -3,6 +3,8 @@
 
 extern crate alloc;
 mod sch;
+// use core::borrow::Borrow;
+
 // use alloc::borrow::ToOwned;
 use alloc::string::{String, ToString};
 use alloc::vec;
@@ -12,10 +14,13 @@ use log::info;
 use sch::SCH;
 use uefi::proto::console::gop::{BltOp, BltPixel, BltRegion, GraphicsOutput};
 use uefi::proto::console::pointer::Pointer;
+use uefi::proto::media::file::{File, FileAttribute, FileMode};
+use uefi::proto::media::fs::SimpleFileSystem;
+// use uefi::proto::media::file::File;
 // use uefi::proto::console::pointer::Pointer;
 // use uefi::proto::console::text::Color;
 use uefi::table::boot::ScopedProtocol;
-use uefi::{prelude::*, Result};
+use uefi::{prelude::*, CStr16, Result};
 // use uefi::proto::console::text::{Color, Output};
 
 struct Buffer {
@@ -365,7 +370,7 @@ fn splash(gop: &mut ScopedProtocol<GraphicsOutput>, bt: &BootServices, system_ta
     }
     // info!("{}x{}", width, height);
     let mut buffer = Buffer::new(width, height);
-    let (min, max, mut count) = (50, 100, 1);
+    let (min, max, mut count) = (50, 100, 0);
     let mut i: u8 = min;
     let mut black = false;
     #[allow(unused_assignments)]
@@ -407,6 +412,29 @@ fn main(_image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let mut gop = bt
         .open_protocol_exclusive::<GraphicsOutput>(gop_handle)
         .unwrap();
+    // ----- ↓ 需要封装 ↓ -----
+    let fs = bt.get_image_file_system(_image_handle).unwrap();
+    let sfs: &mut SimpleFileSystem = fs.get_mut().unwrap();
+    let mut dir = sfs.open_volume().unwrap();
+    let f = "test.txt";
+    info!("read file: {}", f);
+    let mut bf = [0; 256];
+    let filename: &CStr16 = CStr16::from_str_with_buf(f, &mut bf).unwrap();
+    // b.open(filename, open_mode, attributes)
+    let file = dir.open(&filename, FileMode::Read, FileAttribute::ARCHIVE).unwrap();
+    let mut rf = file.into_regular_file().unwrap();
+    let mut bf: [u8; 1024] = [0; 1024];
+    rf.read(&mut bf).unwrap();
+    let count = rf.get_position().unwrap() as u8;
+    let mut str: String = String::new();
+    for i in 0..count as usize{
+        // info!("{:?}", bf[i]);
+        let t =char::from_u32(bf[i] as u32).unwrap().to_string();
+        str = str + &t;
+        // str += bf[i].try_into();
+    }
+    info!("{:?}", str);
+    // ----- ↑ 需要封装 ↑ -----
     // let pointer_handle = bt.get_handle_for_protocol::<Pointer>().unwrap();
     // #[allow(unused_mut, unused_variables)]
     // let mut pointer = bt.open_protocol_exclusive::<Pointer>(pointer_handle).unwrap();
