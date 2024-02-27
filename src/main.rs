@@ -11,16 +11,16 @@ use alloc::vec;
 use alloc::vec::Vec;
 #[allow(unused_imports)]
 use log::info;
-use sch::SCH;
 use uefi::proto::console::gop::{BltOp, BltPixel, BltRegion, GraphicsOutput};
 use uefi::proto::console::pointer::Pointer;
-use uefi::proto::media::file::{File, FileAttribute, FileMode};
-use uefi::proto::media::fs::SimpleFileSystem;
+// use uefi::proto::media::file::{File, FileAttribute, FileMode};
+// use uefi::proto::media::fs::SimpleFileSystem;
 // use uefi::proto::media::file::File;
 // use uefi::proto::console::pointer::Pointer;
 // use uefi::proto::console::text::Color;
 use uefi::table::boot::ScopedProtocol;
-use uefi::{prelude::*, CStr16, Result};
+use uefi::{prelude::*, Result};
+use crate::sch::fs::FS;
 // use uefi::proto::console::text::{Color, Output};
 
 struct Buffer {
@@ -51,6 +51,8 @@ impl Buffer {
 }
 #[allow(dead_code)]
 static mut CURSER_POS:[i128; 2] = [0, 0];
+static mut DIR: Vec<FS> = Vec::new();
+// static mut DIR: Directory = Directory::new();
 
 // struct Color {
 //     red: u8,
@@ -123,7 +125,7 @@ fn my(bt: &BootServices) -> Result {
 }
 
 fn draw_font(buffer: &mut Buffer, char: &str, m_x: usize, m_y: usize, color: (u8, u8, u8)) -> Result {
-    let font = SCH::fonts_char(char);
+    let font = sch::fonts::fonts_char(char);
     for x in 0..16 {
         for y in 0..16 {
             if font[y][x] == 1 {
@@ -154,7 +156,7 @@ fn draw_line(buffer: &mut Buffer, pos1: (u32, u32), pos2: (u32, u32), color: (u8
 fn draw_word(buffer: &mut Buffer, word: &str, p_x: usize, p_y: usize, color: (u8, u8, u8), size: usize, thin: usize) -> Result {
     let mut count = 0;
     for item in word.chars() {
-        let font = SCH::fonts_char(String::from(item).as_str());
+        let font = sch::fonts::fonts_char(String::from(item).as_str());
         for x in 0..16*size {
             for y in 0..16*size {
                 if font[y/size][x/size] == 1 {
@@ -412,29 +414,41 @@ fn main(_image_handle: Handle, mut system_table: SystemTable<Boot>) -> Status {
     let mut gop = bt
         .open_protocol_exclusive::<GraphicsOutput>(gop_handle)
         .unwrap();
-    // ----- ↓ 需要封装 ↓ -----
-    let fs = bt.get_image_file_system(_image_handle).unwrap();
-    let sfs: &mut SimpleFileSystem = fs.get_mut().unwrap();
-    let mut dir = sfs.open_volume().unwrap();
-    let f = "test.txt";
-    info!("read file: {}", f);
-    let mut bf = [0; 256];
-    let filename: &CStr16 = CStr16::from_str_with_buf(f, &mut bf).unwrap();
-    // b.open(filename, open_mode, attributes)
-    let file = dir.open(&filename, FileMode::Read, FileAttribute::ARCHIVE).unwrap();
-    let mut rf = file.into_regular_file().unwrap();
-    let mut bf: [u8; 1024] = [0; 1024];
-    rf.read(&mut bf).unwrap();
-    let count = rf.get_position().unwrap() as u8;
-    let mut str: String = String::new();
-    for i in 0..count as usize{
-        // info!("{:?}", bf[i]);
-        let t =char::from_u32(bf[i] as u32).unwrap().to_string();
-        str = str + &t;
-        // str += bf[i].try_into();
+
+    let mut fs: FS = FS::init(&bt, _image_handle);
+    let (_fs, file) = fs.open("test.txt");
+    if FS::is_file(&file) {
+        info!("{}", FS::read_string(file));
+    } else {
+        info!("Not a file!");
     }
-    info!("{:?}", str);
+    unsafe {
+        DIR.push(fs);
+    }
+    // ----- ↓ 需要封装 ↓ -----
+    // let fs = bt.get_image_file_system(_image_handle).unwrap();
+    // let sfs: &mut SimpleFileSystem = fs.get_mut().unwrap();
+    // let mut dir = sfs.open_volume().unwrap();
+    // let f = "test.txt";
+    // info!("read file: {}", f);
+    // let mut bf = [0; 256];
+    // let filename: &CStr16 = CStr16::from_str_with_buf(f, &mut bf).unwrap();
+    // // b.open(filename, open_mode, attributes)
+    // let file = dir.open(&filename, FileMode::Read, FileAttribute::ARCHIVE).unwrap();
+    // let mut rf = file.into_regular_file().unwrap();
+    // let mut bf: [u8; 1024] = [0; 1024];
+    // rf.read(&mut bf).unwrap();
+    // let count = rf.get_position().unwrap() as u8;
+    // let mut str: String = String::new();
+    // for i in 0..count as usize{
+    //     // info!("{:?}", bf[i]);
+    //     let t =char::from_u32(bf[i] as u32).unwrap().to_string();
+    //     str = str + &t;
+    //     // str += bf[i].try_into();
+    // }
+    // info!("{:?}", str);
     // ----- ↑ 需要封装 ↑ -----
+
     // let pointer_handle = bt.get_handle_for_protocol::<Pointer>().unwrap();
     // #[allow(unused_mut, unused_variables)]
     // let mut pointer = bt.open_protocol_exclusive::<Pointer>(pointer_handle).unwrap();
